@@ -231,6 +231,19 @@
 
             if (!speedVal || !speedProgress) return;
 
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            const isOffline = !navigator.onLine || (connection && connection.type === 'none');
+
+            if (isOffline) {
+                if (startBtn) startBtn.disabled = false;
+                if (speedStatus) speedStatus.textContent = '🔴 Няма връзка с интернет';
+                speedProgress.style.width = '0%';
+                speedVal.textContent = '0.00';
+                if (pingVal) pingVal.textContent = 'N/A';
+                if (qualityVal) qualityVal.textContent = 'Офлайн 🔴';
+                return;
+            }
+
             if (startBtn) startBtn.disabled = true;
             if (speedStatus) speedStatus.textContent = 'Измерване на пинг...';
             speedProgress.style.width = '10%';
@@ -258,8 +271,7 @@
             }
 
             if (!pingMs) {
-                pingMs = 15;
-                if (pingVal) pingVal.textContent = `${pingMs} ms`;
+                if (pingVal) pingVal.textContent = 'N/A';
             }
 
             // 2. Measure Download Speed with live XHR progress
@@ -336,21 +348,12 @@
                         img.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1000&q=70&_img=' + Date.now();
                     });
                 } catch (imgErr) {
-                    // Final fallback calculation based on network info / latency
-                    measuredMbps = parseFloat((Math.random() * 15 + 12).toFixed(2));
+                    // Actual network/connection failure
+                    measuredMbps = 0;
                 }
             }
 
             // Display final results
-            const finalMbpsStr = typeof measuredMbps === 'number' ? measuredMbps.toFixed(2) : measuredMbps;
-            speedProgress.style.width = '100%';
-            speedVal.textContent = finalMbpsStr;
-            if (speedStatus) speedStatus.textContent = 'Тестът завърши успешно';
-
-            const speedNum = parseFloat(finalMbpsStr);
-            let qualityText = 'Задоволително 📶';
-            if (speedNum >= 25) {
-                qualityText = 'Отлично 🚀';
             } else if (speedNum >= 10) {
                 qualityText = 'Добро ⚡';
             } else if (speedNum < 3) {
