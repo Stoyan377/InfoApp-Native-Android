@@ -158,12 +158,10 @@
 
             let connectionType = 'Неразпозната';
             let effectiveType = '';
-            let downlink = '';
 
             if (connection) {
                 connectionType = connection.type || connection.effectiveType || 'Неразпозната';
                 
-                // Map connection types to Bulgarian
                 const typeMap = {
                     'wifi': 'WiFi',
                     'cellular': 'Мобилна мрежа',
@@ -180,19 +178,115 @@
                 if (connection.effectiveType) {
                     effectiveType = connection.effectiveType.toUpperCase();
                 }
-                if (connection.downlink) {
-                    downlink = connection.downlink + ' Mbps';
-                }
             }
 
             let content = `
                 ${UIManager.createInfoRow('Статус', isOnline)}
                 ${UIManager.createInfoRow('Тип връзка', connectionType)}
-                ${effectiveType ? UIManager.createInfoRow('Ефективен тип', effectiveType) : ''}
-                ${downlink ? UIManager.createInfoRow('Скорост', downlink) : ''}
+                ${effectiveType ? UIManager.createInfoRow('Мрежова технология', effectiveType) : ''}
+                
+                <div class="speed-test-card">
+                    <div class="speed-meter-container">
+                        <div class="speed-unit" id="speedStatusText">Тест на скоростта в реално време</div>
+                        <div class="speed-value-display" id="speedVal">--</div>
+                        <div class="speed-unit">Mbps</div>
+                        <div class="speed-progress-bar">
+                            <div class="speed-progress-fill" id="speedProgress" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                    <div class="speed-metrics-grid">
+                        <div class="speed-metric-item">
+                            <div class="speed-metric-label">Пинг</div>
+                            <div class="speed-metric-val" id="pingVal">-- ms</div>
+                        </div>
+                        <div class="speed-metric-item">
+                            <div class="speed-metric-label">Качество</div>
+                            <div class="speed-metric-val" id="qualityVal">--</div>
+                        </div>
+                    </div>
+                    <button class="btn test-btn" id="startSpeedTestBtn">
+                        <span class="btn-icon">⚡</span>
+                        <span class="btn-text">Тествай скоростта</span>
+                    </button>
+                </div>
             `;
 
             UIManager.showModal('📡 Мрежова информация', content);
+
+            const startBtn = document.getElementById('startSpeedTestBtn');
+            if (startBtn) {
+                startBtn.addEventListener('click', () => this.runSpeedTest());
+            }
+
+            setTimeout(() => this.runSpeedTest(), 300);
+        },
+
+        async runSpeedTest() {
+            const speedVal = document.getElementById('speedVal');
+            const speedStatus = document.getElementById('speedStatusText');
+            const speedProgress = document.getElementById('speedProgress');
+            const pingVal = document.getElementById('pingVal');
+            const qualityVal = document.getElementById('qualityVal');
+            const startBtn = document.getElementById('startSpeedTestBtn');
+
+            if (!speedVal || !speedProgress) return;
+
+            if (startBtn) startBtn.disabled = true;
+            speedStatus.textContent = 'Измерване на пинг...';
+            speedProgress.style.width = '15%';
+            speedVal.textContent = '...';
+
+            let pingMs = 0;
+            try {
+                const pingUrl = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js?ping=' + Date.now();
+                const pStart = performance.now();
+                await fetch(pingUrl, { method: 'HEAD', cache: 'no-store' }).catch(() => {});
+                const pEnd = performance.now();
+                pingMs = Math.round(pEnd - pStart);
+                if (pingVal) pingVal.textContent = `${pingMs} ms`;
+            } catch (e) {
+                if (pingVal) pingVal.textContent = 'N/A';
+            }
+
+            speedStatus.textContent = 'Измерване на скорост...';
+            speedProgress.style.width = '40%';
+
+            try {
+                const downloadUrl = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js?_t=' + Date.now();
+                const startTime = performance.now();
+                
+                const response = await fetch(downloadUrl, { cache: 'no-store' });
+                const blob = await response.blob();
+                const endTime = performance.now();
+
+                speedProgress.style.width = '85%';
+                const durationSeconds = (endTime - startTime) / 1000;
+                const bitsLoaded = blob.size * 8;
+                const speedBps = bitsLoaded / durationSeconds;
+                const speedMbps = (speedBps / (1024 * 1024)).toFixed(2);
+
+                speedProgress.style.width = '100%';
+                if (speedVal) speedVal.textContent = speedMbps;
+                if (speedStatus) speedStatus.textContent = 'Тестът завърши успешно';
+
+                const speedNum = parseFloat(speedMbps);
+                let qualityText = 'Задоволително 📶';
+                if (speedNum >= 25) {
+                    qualityText = 'Отлично 🚀';
+                } else if (speedNum >= 10) {
+                    qualityText = 'Добро ⚡';
+                } else if (speedNum < 3) {
+                    qualityText = 'Ниско 🐌';
+                }
+                if (qualityVal) qualityVal.textContent = qualityText;
+
+            } catch (err) {
+                if (speedStatus) speedStatus.textContent = 'Грешка при теста на скоростта';
+                if (speedVal) speedVal.textContent = 'N/A';
+                if (qualityVal) qualityVal.textContent = 'Неизвестно';
+            } finally {
+                if (startBtn) startBtn.disabled = false;
+            }
         },
 
         showOrientation() {
