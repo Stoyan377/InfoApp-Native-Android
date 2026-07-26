@@ -153,30 +153,42 @@
         },
 
         showNetwork() {
-            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            const isOnline = navigator.onLine ? '🟢 Онлайн' : '🔴 Офлайн';
-
+            let isOnline = navigator.onLine ? '🟢 Онлайн' : '🔴 Офлайн';
             let connectionType = 'Неразпозната';
             let effectiveType = '';
 
-            if (connection) {
-                connectionType = connection.type || connection.effectiveType || 'Неразпозната';
-                
-                const typeMap = {
-                    'wifi': 'WiFi',
-                    'cellular': 'Мобилна мрежа',
-                    'ethernet': 'Ethernet',
-                    'bluetooth': 'Bluetooth',
-                    'none': 'Няма връзка',
-                    '4g': '4G',
-                    '3g': '3G',
-                    '2g': '2G',
-                    'slow-2g': 'Бавен 2G'
-                };
-                connectionType = typeMap[connectionType] || connectionType;
-                
-                if (connection.effectiveType) {
-                    effectiveType = connection.effectiveType.toUpperCase();
+            // 1. Try native Android bridge for accurate 5G/4G/WiFi detection
+            if (typeof AndroidBridge !== 'undefined' && AndroidBridge.getNetworkInfo) {
+                try {
+                    const netInfo = JSON.parse(AndroidBridge.getNetworkInfo());
+                    isOnline = netInfo.isOnline ? '🟢 Онлайн' : '🔴 Офлайн';
+                    connectionType = netInfo.connectionType || 'Неразпозната';
+                    effectiveType = netInfo.technology || '';
+                } catch (e) {
+                    console.log('Error reading native network info:', e);
+                }
+            }
+
+            // 2. Fallback to web Connection API if native bridge unavailable
+            if (!effectiveType) {
+                const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+                if (connection) {
+                    connectionType = connection.type || connection.effectiveType || 'Неразпозната';
+                    const typeMap = {
+                        'wifi': 'WiFi',
+                        'cellular': 'Мобилна мрежа',
+                        'ethernet': 'Ethernet',
+                        'bluetooth': 'Bluetooth',
+                        'none': 'Няма връзка',
+                        '4g': '4G',
+                        '3g': '3G',
+                        '2g': '2G',
+                        'slow-2g': 'Бавен 2G'
+                    };
+                    connectionType = typeMap[connectionType] || connectionType;
+                    if (connection.effectiveType) {
+                        effectiveType = connection.effectiveType.toUpperCase();
+                    }
                 }
             }
 
