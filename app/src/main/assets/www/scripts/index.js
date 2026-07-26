@@ -4,7 +4,7 @@
 (function () {
     'use strict';
 
-    // Initialize when DOM is ready (no Cordova deviceready needed)
+    // Initialize when DOM is ready
     document.addEventListener('DOMContentLoaded', onReady, false);
 
     // ============================================================================
@@ -59,8 +59,8 @@
                 now.getFullYear()
             ].join('/');
 
-            this.timeDisplay.textContent = time;
-            this.dateDisplay.textContent = date;
+            if (this.timeDisplay) this.timeDisplay.textContent = time;
+            if (this.dateDisplay) this.dateDisplay.textContent = date;
         },
 
         showModal(title, content) {
@@ -332,7 +332,7 @@
                 }
             }
 
-            // Fallback if XHR failed (e.g., Image download timing)
+            // Fallback if XHR failed
             if (!measuredMbps || isNaN(measuredMbps)) {
                 try {
                     measuredMbps = await new Promise((resolve, reject) => {
@@ -340,7 +340,6 @@
                         const imgStart = performance.now();
                         img.onload = () => {
                             const imgDuration = (performance.now() - imgStart) / 1000;
-                            // Estimated 500KB image payload
                             const imgMbps = ((500000 * 8) / (imgDuration * 1048576)).toFixed(2);
                             resolve(parseFloat(imgMbps));
                         };
@@ -348,18 +347,34 @@
                         img.src = 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=1000&q=70&_img=' + Date.now();
                     });
                 } catch (imgErr) {
-                    // Actual network/connection failure
                     measuredMbps = 0;
                 }
             }
 
             // Display final results
-            } else if (speedNum >= 10) {
-                qualityText = 'Добро ⚡';
-            } else if (speedNum < 3) {
-                qualityText = 'Ниско 🐌';
+            if (measuredMbps <= 0) {
+                speedProgress.style.width = '0%';
+                speedVal.textContent = '0.00';
+                if (speedStatus) speedStatus.textContent = '🔴 Няма връзка с интернет';
+                if (pingVal && !pingMs) pingVal.textContent = 'N/A';
+                if (qualityVal) qualityVal.textContent = 'Офлайн 🔴';
+            } else {
+                const finalMbpsStr = measuredMbps.toFixed(2);
+                speedProgress.style.width = '100%';
+                speedVal.textContent = finalMbpsStr;
+                if (speedStatus) speedStatus.textContent = 'Тестът завърши успешно';
+
+                const speedNum = parseFloat(finalMbpsStr);
+                let qualityText = 'Задоволително 📶';
+                if (speedNum >= 25) {
+                    qualityText = 'Отлично 🚀';
+                } else if (speedNum >= 10) {
+                    qualityText = 'Добро ⚡';
+                } else if (speedNum < 3) {
+                    qualityText = 'Ниско 🐌';
+                }
+                if (qualityVal) qualityVal.textContent = qualityText;
             }
-            if (qualityVal) qualityVal.textContent = qualityText;
 
             if (startBtn) startBtn.disabled = false;
         },
@@ -369,7 +384,6 @@
                 const orientation = screen.orientation.type || 'Неизвестна';
                 const angle = screen.orientation.angle || 0;
 
-                // Map orientation types to Bulgarian
                 const orientationMap = {
                     'portrait-primary': 'Портрет (основен)',
                     'portrait-secondary': 'Портрет (обърнат)',
@@ -404,7 +418,6 @@
                 maximumAge: 20000
             };
 
-            // Show loading state
             UIManager.showModal('📍 Местоположение',
                 UIManager.createAlertBox('⏳ Определяне на местоположението...', 'info'));
 
