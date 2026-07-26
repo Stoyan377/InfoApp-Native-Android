@@ -129,66 +129,70 @@ class MainActivity : ComponentActivity() {
                 val activeNetwork = cm.activeNetwork
                 if (activeNetwork == null) {
                     result.put("isOnline", false)
-                    result.put("connectionType", "Няма връзка")
-                    result.put("technology", "Няма")
+                    result.put("technology", "Няма връзка")
                     return result.toString()
                 }
 
                 val caps = cm.getNetworkCapabilities(activeNetwork)
                 if (caps == null || !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) {
                     result.put("isOnline", false)
-                    result.put("connectionType", "Няма връзка")
-                    result.put("technology", "Няма")
+                    result.put("technology", "Няма връзка")
                     return result.toString()
                 }
 
                 result.put("isOnline", true)
 
                 if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
-                    result.put("connectionType", "WiFi")
                     result.put("technology", "WiFi")
                 } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
-                    result.put("connectionType", "Мобилна мрежа")
-                    
-                    val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-                    val networkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                        try { tm.dataNetworkType } catch (e: Exception) { tm.networkType }
-                    } else {
-                        @Suppress("DEPRECATION")
-                        tm.networkType
+                    var tech = ""
+                    try {
+                        val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                        val networkType = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                            try { tm.dataNetworkType } catch (e: Throwable) { 
+                                try { tm.networkType } catch (e2: Throwable) { TelephonyManager.NETWORK_TYPE_UNKNOWN }
+                            }
+                        } else {
+                            @Suppress("DEPRECATION")
+                            try { tm.networkType } catch (e: Throwable) { TelephonyManager.NETWORK_TYPE_UNKNOWN }
+                        }
+
+                        tech = when (networkType) {
+                            TelephonyManager.NETWORK_TYPE_NR -> "5G"
+                            TelephonyManager.NETWORK_TYPE_LTE -> "4G (LTE)"
+                            TelephonyManager.NETWORK_TYPE_UMTS,
+                            TelephonyManager.NETWORK_TYPE_HSDPA,
+                            TelephonyManager.NETWORK_TYPE_HSUPA,
+                            TelephonyManager.NETWORK_TYPE_HSPA,
+                            TelephonyManager.NETWORK_TYPE_HSPAP -> "3G"
+                            TelephonyManager.NETWORK_TYPE_GPRS,
+                            TelephonyManager.NETWORK_TYPE_EDGE -> "2G"
+                            else -> ""
+                        }
+                    } catch (e: Throwable) {
+                        tech = ""
                     }
 
-                    val tech = when (networkType) {
-                        TelephonyManager.NETWORK_TYPE_NR -> "5G"
-                        TelephonyManager.NETWORK_TYPE_LTE -> "4G (LTE)"
-                        TelephonyManager.NETWORK_TYPE_UMTS,
-                        TelephonyManager.NETWORK_TYPE_EVDO_0,
-                        TelephonyManager.NETWORK_TYPE_EVDO_A,
-                        TelephonyManager.NETWORK_TYPE_HSDPA,
-                        TelephonyManager.NETWORK_TYPE_HSUPA,
-                        TelephonyManager.NETWORK_TYPE_HSPA,
-                        TelephonyManager.NETWORK_TYPE_EVDO_B,
-                        TelephonyManager.NETWORK_TYPE_EHRPD,
-                        TelephonyManager.NETWORK_TYPE_HSPAP -> "3G"
-                        TelephonyManager.NETWORK_TYPE_GPRS,
-                        TelephonyManager.NETWORK_TYPE_EDGE,
-                        TelephonyManager.NETWORK_TYPE_CDMA,
-                        TelephonyManager.NETWORK_TYPE_1xRTT,
-                        TelephonyManager.NETWORK_TYPE_IDEN -> "2G"
-                        else -> "5G / 4G"
+                    if (tech.isEmpty()) {
+                        val downKbps = caps.linkDownstreamBandwidthKbps
+                        tech = if (downKbps >= 100000) {
+                            "5G"
+                        } else if (downKbps >= 15000) {
+                            "4G (LTE)"
+                        } else {
+                            "5G / 4G"
+                        }
                     }
+
                     result.put("technology", tech)
                 } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
-                    result.put("connectionType", "Ethernet")
-                    result.put("technology", "Кабелна")
+                    result.put("technology", "Ethernet (Кабелна)")
                 } else {
-                    result.put("connectionType", "Друга")
-                    result.put("technology", "Неизвестна")
+                    result.put("technology", "Мобилна мрежа")
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 result.put("isOnline", true)
-                result.put("connectionType", "Мобилна / WiFi")
-                result.put("technology", "Неизвестна")
+                result.put("technology", "5G / 4G")
             }
             return result.toString()
         }

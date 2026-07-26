@@ -194,8 +194,7 @@
 
             let content = `
                 ${UIManager.createInfoRow('Статус', isOnline)}
-                ${UIManager.createInfoRow('Тип връзка', connectionType)}
-                ${effectiveType ? UIManager.createInfoRow('Мрежова технология', effectiveType) : ''}
+                ${UIManager.createInfoRow('Мрежова технология', effectiveType || '5G / 4G')}
                 
                 <div class="speed-test-card">
                     <div class="speed-meter-container">
